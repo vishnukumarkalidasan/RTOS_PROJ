@@ -315,8 +315,8 @@ static void prvUpdatePrioritiesEDF( void )
 static void prvPeriodicTaskCode( void *pvParameters )
 {
  
-	SchedTCB_t *pxThisTask;
-  //SchedTCB_t* pxThisTask = ( SchedTCB_t * ) pvTaskGetThreadLocalStoragePointer( xTaskGetCurrentTaskHandle(), schedTHREAD_LOCAL_STORAGE_POINTER_INDEX );	
+	//SchedTCB_t *pxThisTask;
+  SchedTCB_t* pxThisTask = ( SchedTCB_t * ) pvTaskGetThreadLocalStoragePointer( xTaskGetCurrentTaskHandle(), schedTHREAD_LOCAL_STORAGE_POINTER_INDEX );	
 	TaskHandle_t xCurrentTaskHandle = xTaskGetCurrentTaskHandle();  
 	
     /* your implementation goes here */
@@ -340,7 +340,7 @@ static void prvPeriodicTaskCode( void *pvParameters )
 		   return;
 	}
 #endif
-#if(schedUSE_TCB_SORTED_LIST == 1)
+#if 0 //(schedUSE_TCB_SORTED_LIST == 0)
   const ListItem_t *pxTCBListEndMarker = listGET_END_MARKER(pxTCBList);
 	ListItem_t *pxTCBListItem = listGET_HEAD_ENTRY(pxTCBList);
   Serial.println("execute task ");
@@ -348,41 +348,37 @@ static void prvPeriodicTaskCode( void *pvParameters )
 
 	while (pxTCBListItem != pxTCBListEndMarker)
 	{
-    //Serial.println("handle1");
+    Serial.println("handle1");
 		pxThisTask = listGET_LIST_ITEM_OWNER(pxTCBListItem);
 		/* your implementation goes here. */	  //TODO
 		if (xCurrentTaskHandle == *pxThisTask->pxTaskHandle) {
 			break;
 		}
 		//Serial.flush();
-		//Serial.println("handle2");
+		Serial.println("handle2");
 		//Serial.flush();
 		/*Done*/
 		pxTCBListItem = listGET_NEXT(pxTCBListItem);
 	}
-  //Serial.println("execute tasks out");
+  Serial.println("execute tasks out");
   if(pxThisTask == NULL) {
     Serial.println("task handle is NULL");
   }
 #endif
-  Serial.print(pxThisTask->pcName);
-  Serial.print(", Period- ");
-  Serial.print(pxThisTask->xPeriod);
-  Serial.print(", Released at- ");
-  Serial.print(pxThisTask->xReleaseTime);
-  Serial.print(", *Priority- ");
-  Serial.print(pxThisTask->uxPriority);
-  Serial.print(", WCET- ");
-  Serial.print(pxThisTask->xMaxExecTime);
-  Serial.print(", Deadline- ");
-  Serial.println(pxThisTask->xRelativeDeadline);
-
+  taskENTER_CRITICAL();
+  Serial.println("execute tasks out");
+  if(pxThisTask == NULL) {
+    Serial.println("task handle is NULL");
+  }
+  Serial.print("delay until ");
+  Serial.println(pxThisTask->xReleaseTime);
+  taskEXIT_CRITICAL();  
 	if( pxThisTask->xReleaseTime != 0 )
 	{
     Serial.print("delay until ");
     Serial.println(pxThisTask->xReleaseTime);
-    pxThisTask->xReleaseTime = 0;
-		//xTaskDelayUntil( &pxThisTask->xLastWakeTime, pxThisTask->xReleaseTime );
+    //pxThisTask->xReleaseTime = 0;
+		xTaskDelayUntil( &pxThisTask->xLastWakeTime, pxThisTask->xReleaseTime );
 	} 
 	#if( schedUSE_TIMING_ERROR_DETECTION_DEADLINE == 1 )
         /* your implementation goes here */
@@ -396,14 +392,14 @@ static void prvPeriodicTaskCode( void *pvParameters )
 
 	for( ; ; )
 	{
-    //Serial.println("in for loop ");
+    Serial.println("in for loop ");
 		#if( schedSCHEDULING_POLICY == schedSCHEDULING_POLICY_EDF )	
 				/* Wake up the scheduler task to update priorities of all periodic tasks. */
 			prvWakeScheduler();
 		#endif /* schedSCHEDULING_POLICY_EDF */	
 		/* Execute the task function specified by the user. */
 
-		//Serial.println("executing task ");
+		Serial.println("executing task ");
 		pxThisTask->xWorkIsDone = pdFALSE;
 		pxThisTask->pvTaskCode( pvParameters );
 		pxThisTask->xWorkIsDone = pdTRUE;  
@@ -489,7 +485,7 @@ void vSchedulerPeriodicTaskCreate( TaskFunction_t pvTaskCode, const char *pcName
 	#if( schedUSE_TCB_SORTED_LIST == 1 )
 		prvAddTCBToList( pxNewTCB );	
 	#endif /* schedUSE_TCB_SORTED_LIST */
-	taskEXIT_CRITICAL();
+	
     Serial.print("TASK: ");
     Serial.print(pxNewTCB->pcName);
   	Serial.print(" MaxExecTime: ");
@@ -497,6 +493,7 @@ void vSchedulerPeriodicTaskCreate( TaskFunction_t pvTaskCode, const char *pcName
     Serial.print(", Released at- ");
     Serial.print(pxNewTCB->xReleaseTime);
 	  Serial.println(" is recieved.");
+    taskEXIT_CRITICAL();
 }
 
 /* Deletes a periodic task. */
@@ -592,6 +589,7 @@ static void prvCreateAllTasks( void )
 				Serial.println(" failed");
 			}
 
+      vTaskSetThreadLocalStoragePointer( *pxTCB->pxTaskHandle, schedTHREAD_LOCAL_STORAGE_POINTER_INDEX, pxTCB );
 			pxTCBListItem = listGET_NEXT( pxTCBListItem );
 		}	
 	#endif /* schedUSE_TCB_SORTED_LIST */
@@ -697,6 +695,7 @@ static void prvInitEDF(void)
 		BaseType_t xReturnValue = xTaskCreate(prvPeriodicTaskCode, pxTCB->pcName, pxTCB->uxStackDepth, pxTCB->pvParameters, pxTCB->uxPriority, pxTCB->pxTaskHandle );
 		if( pdPASS == xReturnValue )
 		{
+      vTaskSetThreadLocalStoragePointer( *pxTCB->pxTaskHandle, schedTHREAD_LOCAL_STORAGE_POINTER_INDEX, ( SchedTCB_t * ) pxTCB );
 			/* your implementation goes here */			
 			Serial.print(pxTCB->pcName);
 			Serial.print(" is recreated. ");	
@@ -744,7 +743,7 @@ static void prvInitEDF(void)
 			if( ( signed ) ( pxTCB->xAbsoluteDeadline - xTickCount ) < 0 )
 			{
 				
-		prvDeadlineMissedHook( pxTCB, xTickCount );
+		    prvDeadlineMissedHook( pxTCB, xTickCount );
 			}
 		}
 			
@@ -780,12 +779,6 @@ static void prvInitEDF(void)
 	static void prvSchedulerCheckTimingError( TickType_t xTickCount, SchedTCB_t *pxTCB )
 	{
 		/* your implementation goes here */
-		#if( schedUSE_TCB_ARRAY == 1 )
-			if( pdFALSE == pxTCB->xInUse )
-			{
-				return;
-			}
-		#endif
 
 		#if( schedUSE_TIMING_ERROR_DETECTION_DEADLINE == 1 )						
 			/* check if task missed deadline */
@@ -857,9 +850,6 @@ static void prvInitEDF(void)
 			
 			#endif /* schedUSE_TIMING_ERROR_DETECTION_DEADLINE || schedUSE_TIMING_ERROR_DETECTION_EXECUTION_TIME */
 
-			#if(schedOverhead == 1)
-				xLastTask = xSchedulerHandle;
-			#endif
 			ulTaskNotifyTake( pdTRUE, portMAX_DELAY );
 		}
 	}
@@ -876,7 +866,7 @@ static void prvInitEDF(void)
 	/* Wakes up (context switches to) the scheduler task. */
 	static void prvWakeScheduler( void )
 	{
-    //Serial.println("wake scheduler");
+    Serial.println("wake scheduler");
 		BaseType_t xHigherPriorityTaskWoken;
 		vTaskNotifyGiveFromISR( xSchedulerHandle, &xHigherPriorityTaskWoken );
 		xTaskResumeFromISR(xSchedulerHandle);    
