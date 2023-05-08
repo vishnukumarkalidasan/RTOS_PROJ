@@ -269,6 +269,10 @@ static void prvUpdatePrioritiesEDF( void )
 		/* If absolute deadline overflowed, insert TCB to overflowed list. */
 		if( pxTCB->xAbsoluteDeadline < pxTCB->xLastWakeTime )
 		{
+      taskENTER_CRITICAL();
+      Serial.print(pxTCB->pcName);
+      Serial.println(" misses");
+      taskEXIT_CRITICAL();
 			vListInsert( pxTCBOverflowedList, pxTCBListItemTemp );
 		}
 		else /* Insert TCB into temp list in usual case. */
@@ -289,6 +293,8 @@ static void prvUpdatePrioritiesEDF( void )
 	/* assign priorities to tasks */
 	const ListItem_t *pxTCBListEndMarkerAfterSwap = listGET_END_MARKER(pxTCBList);
 	pxTCBListItem = listGET_HEAD_ENTRY(pxTCBList);
+  Serial.println("Task\tP\tD");
+  
 	while (pxTCBListItem != pxTCBListEndMarkerAfterSwap)
 	{
 		pxTCB = listGET_LIST_ITEM_OWNER( pxTCBListItem );
@@ -298,9 +304,14 @@ static void prvUpdatePrioritiesEDF( void )
 		configASSERT( -1 <= xHighestPriority );
 		pxTCB->uxPriority = xHighestPriority;
 		vTaskPrioritySet( *pxTCB->pxTaskHandle, pxTCB->uxPriority );
+    //taskENTER_CRITICAL();
     Serial.print(pxTCB->pcName);
-    Serial.print(" got priority ");
-    Serial.println(pxTCB->uxPriority);
+    Serial.print("\t");
+    Serial.print(pxTCB->uxPriority);
+    Serial.print("\t");
+    Serial.println(pxTCB->xAbsoluteDeadline);
+    //Serial.flush();
+    //taskEXIT_CRITICAL();
 
 		xHighestPriority--;
 		pxTCBListItem = listGET_NEXT( pxTCBListItem );
@@ -366,7 +377,7 @@ static void prvPeriodicTaskCode( void *pvParameters )
   }
 #endif
   taskENTER_CRITICAL();
-  Serial.println("execute tasks out");
+  Serial.println("New task");
   if(pxThisTask == NULL) {
     Serial.println("task handle is NULL");
   }
@@ -375,8 +386,8 @@ static void prvPeriodicTaskCode( void *pvParameters )
   taskEXIT_CRITICAL();  
 	if( pxThisTask->xReleaseTime != 0 )
 	{
-    Serial.print("delay until ");
-    Serial.println(pxThisTask->xReleaseTime);
+    //Serial.print("delay until ");
+    //Serial.println(pxThisTask->xReleaseTime);
     //pxThisTask->xReleaseTime = 0;
 		xTaskDelayUntil( &pxThisTask->xLastWakeTime, pxThisTask->xReleaseTime );
 	} 
@@ -392,14 +403,15 @@ static void prvPeriodicTaskCode( void *pvParameters )
 
 	for( ; ; )
 	{
-    Serial.println("in for loop ");
+    delay(100);
+    //Serial.println("in for loop ");
 		#if( schedSCHEDULING_POLICY == schedSCHEDULING_POLICY_EDF )	
 				/* Wake up the scheduler task to update priorities of all periodic tasks. */
 			prvWakeScheduler();
 		#endif /* schedSCHEDULING_POLICY_EDF */	
 		/* Execute the task function specified by the user. */
 
-		Serial.println("executing task ");
+		//Serial.println("executing task ");
 		pxThisTask->xWorkIsDone = pdFALSE;
 		pxThisTask->pvTaskCode( pvParameters );
 		pxThisTask->xWorkIsDone = pdTRUE;  
@@ -428,8 +440,6 @@ void vSchedulerPeriodicTaskCreate( TaskFunction_t pvTaskCode, const char *pcName
 		configASSERT( xIndex != -1 );
 		pxNewTCB = &xTCBArray[ xIndex ];	
 	#else /* schedUSE_TCB_ARRAY */
-      Serial.print("sizeof struct = ");
-      Serial.println(sizeof( SchedTCB_t ));
   		pxNewTCB = pvPortMalloc( sizeof( SchedTCB_t ) );
 	#endif /* schedUSE_TCB_ARRAY */
 
