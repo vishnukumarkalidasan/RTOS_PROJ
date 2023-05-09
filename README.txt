@@ -8,7 +8,7 @@ Source tree
         scheduler.cpp
         scheduler.h
 
-FreeRTOSConfig.h - replacyour config with this config has ot has some stack size changes.
+FreeRTOSConfig.h - replace your config with this config as it has some stack size changes.
 project.ino has the set of 3 different sets of tasks to execute. modify the #define like below to select a task set.
 
 #define TASK1   0
