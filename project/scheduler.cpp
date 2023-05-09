@@ -403,7 +403,7 @@ static void prvPeriodicTaskCode( void *pvParameters )
 
 	for( ; ; )
 	{
-    delay(100);
+    delay(200);
     //Serial.println("in for loop ");
 		#if( schedSCHEDULING_POLICY == schedSCHEDULING_POLICY_EDF )	
 				/* Wake up the scheduler task to update priorities of all periodic tasks. */
