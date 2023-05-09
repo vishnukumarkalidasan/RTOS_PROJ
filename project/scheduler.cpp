@@ -246,7 +246,7 @@ static void prvUpdatePrioritiesEDF( void )
 
 	ListItem_t *pxTCBListItem;
 	ListItem_t *pxTCBListItemTemp;
-  //Serial.println("update priorities called");
+  //Serial.println("update priorities");
 	if( listLIST_IS_EMPTY( pxTCBList ) && !listLIST_IS_EMPTY( pxTCBOverflowedList ) )
 	{
 		prvSwapList( &pxTCBList, &pxTCBOverflowedList );
@@ -269,10 +269,10 @@ static void prvUpdatePrioritiesEDF( void )
 		/* If absolute deadline overflowed, insert TCB to overflowed list. */
 		if( pxTCB->xAbsoluteDeadline < pxTCB->xLastWakeTime )
 		{
-      taskENTER_CRITICAL();
-      Serial.print(pxTCB->pcName);
-      Serial.println(" misses");
-      taskEXIT_CRITICAL();
+      //taskENTER_CRITICAL();
+      //Serial.print(pxTCB->pcName);
+      //Serial.println(" misses");
+      //taskEXIT_CRITICAL();
 			vListInsert( pxTCBOverflowedList, pxTCBListItemTemp );
 		}
 		else /* Insert TCB into temp list in usual case. */
@@ -293,29 +293,27 @@ static void prvUpdatePrioritiesEDF( void )
 	/* assign priorities to tasks */
 	const ListItem_t *pxTCBListEndMarkerAfterSwap = listGET_END_MARKER(pxTCBList);
 	pxTCBListItem = listGET_HEAD_ENTRY(pxTCBList);
-  Serial.println("Task\tP\tD");
-  
+  //Serial.println("Task\tP\tD");
+  //taskENTER_CRITICAL();
 	while (pxTCBListItem != pxTCBListEndMarkerAfterSwap)
 	{
 		pxTCB = listGET_LIST_ITEM_OWNER( pxTCBListItem );
-    if(-1 > xHighestPriority) {
-      Serial.println("priority cannot be < -1");
-    }
 		configASSERT( -1 <= xHighestPriority );
 		pxTCB->uxPriority = xHighestPriority;
 		vTaskPrioritySet( *pxTCB->pxTaskHandle, pxTCB->uxPriority );
-    //taskENTER_CRITICAL();
-    Serial.print(pxTCB->pcName);
-    Serial.print("\t");
-    Serial.print(pxTCB->uxPriority);
-    Serial.print("\t");
-    Serial.println(pxTCB->xAbsoluteDeadline);
+    
+    // Serial.print(pxTCB->pcName);
+    // Serial.print("\t");
+    // Serial.print(pxTCB->uxPriority);
+    // Serial.print("\t");
+    // Serial.println(pxTCB->xAbsoluteDeadline);
     //Serial.flush();
-    //taskEXIT_CRITICAL();
+    
 
 		xHighestPriority--;
 		pxTCBListItem = listGET_NEXT( pxTCBListItem );
 	}
+  //taskEXIT_CRITICAL();
 
 }
 #endif /* schedSCHEDULING_POLICY_EDF */
@@ -377,12 +375,11 @@ static void prvPeriodicTaskCode( void *pvParameters )
   }
 #endif
   taskENTER_CRITICAL();
-  Serial.println("New task");
+  Serial.print("New ");
   if(pxThisTask == NULL) {
     Serial.println("task handle is NULL");
   }
-  Serial.print("delay until ");
-  Serial.println(pxThisTask->xReleaseTime);
+  Serial.println(pxThisTask->pcName);
   taskEXIT_CRITICAL();  
 	if( pxThisTask->xReleaseTime != 0 )
 	{
@@ -403,8 +400,11 @@ static void prvPeriodicTaskCode( void *pvParameters )
 
 	for( ; ; )
 	{
-    delay(200);
-    //Serial.println("in for loop ");
+    Serial.print(pxThisTask->pcName);
+		Serial.print(" - ");
+		Serial.print(xTaskGetTickCount());
+		Serial.print("\n");
+		Serial.flush();
 		#if( schedSCHEDULING_POLICY == schedSCHEDULING_POLICY_EDF )	
 				/* Wake up the scheduler task to update priorities of all periodic tasks. */
 			prvWakeScheduler();
@@ -535,15 +535,17 @@ void vSchedulerPeriodicTaskDelete( TaskHandle_t xTaskHandle )
 		{
 			pxThisTask = listGET_LIST_ITEM_OWNER(pxTCBListItem);
 			/* your implementation goes here. */	  //TODO
-			Serial.print("Delete");
-			Serial.flush();
+			// Serial.print("Delete");
+      // Serial.println(pxThisTask->pcName);
+			//Serial.flush();
 			if (xTaskHandle == *pxThisTask->pxTaskHandle) {
 				break;
 			}
 			pxTCBListItem = listGET_NEXT(pxTCBListItem);
 			// DONE
 		}
-
+    Serial.print("Delete");
+    Serial.println(pxThisTask->pcName);
 		prvDeleteTCBFromList(pxThisTask);
 
 #endif /* schedUSE_TCB_SORTED_LIST */
@@ -570,12 +572,21 @@ static void prvCreateAllTasks( void )
   #if( schedUSE_TCB_SORTED_LIST == 1 )
 		const ListItem_t *pxTCBListEndMarker = listGET_END_MARKER( pxTCBList );
 		ListItem_t *pxTCBListItem = listGET_HEAD_ENTRY( pxTCBList );
-
+  #if( schedUSE_SCHEDULER_TASK == 1 )
+		BaseType_t xHighestPriority = schedSCHEDULER_PRIORITY - 1; 
+	#else
+		BaseType_t xHighestPriority = configMAX_PRIORITIES - 1;
+	#endif /* schedUSE_SCHEDULER_TASK */
 
 		while( pxTCBListItem != pxTCBListEndMarker )
 		{
 			pxTCB = listGET_LIST_ITEM_OWNER( pxTCBListItem );
 			configASSERT( NULL != pxTCB );
+      if( xHighestPriority > 0)
+		  {
+			  xHighestPriority--;
+		  }
+      pxTCB->uxPriority = xHighestPriority;
 			BaseType_t xReturnValue = xTaskCreate( prvPeriodicTaskCode, pxTCB->pcName, pxTCB->uxStackDepth, pxTCB->pvParameters, pxTCB->uxPriority, pxTCB->pxTaskHandle );
 			if( pdPASS == xReturnValue )
 			{
@@ -826,7 +837,9 @@ static void prvInitEDF(void)
 		for( ; ; )
 		{ 
 			#if( schedSCHEDULING_POLICY == schedSCHEDULING_POLICY_EDF )
+        //taskENTER_CRITICAL();
 				prvUpdatePrioritiesEDF();
+        //taskEXIT_CRITICAL();
 			#endif
 			#if( schedUSE_TIMING_ERROR_DETECTION_DEADLINE == 1 || schedUSE_TIMING_ERROR_DETECTION_EXECUTION_TIME == 1 )
 				TickType_t xTickCount = xTaskGetTickCount();
@@ -876,21 +889,21 @@ static void prvInitEDF(void)
 	/* Wakes up (context switches to) the scheduler task. */
 	static void prvWakeScheduler( void )
 	{
-    Serial.println("wake scheduler");
+    //Serial.println("*sched*");
 		BaseType_t xHigherPriorityTaskWoken;
 		vTaskNotifyGiveFromISR( xSchedulerHandle, &xHigherPriorityTaskWoken );
 		xTaskResumeFromISR(xSchedulerHandle);    
 	}
 
-#if 0
+#if 1
 	/* Called every software tick. */
 	// In FreeRTOSConfig.h,
 	// Enable configUSE_TICK_HOOK
 	// Enable INCLUDE_xTaskGetIdleTaskHandle
 	// Enable INCLUDE_xTaskGetCurrentTaskHandle
-	// void vApplicationTickHook( void )
-	// {            
-	// 	SchedTCB_t *pxCurrentTask;		
+ void vApplicationTickHook( void )
+ {            
+ 	SchedTCB_t *pxCurrentTask;		
 	// 	TaskHandle_t xCurrentTaskHandle = xTaskGetCurrentTaskHandle();		
   //       UBaseType_t flag = 0;
   //       BaseType_t xIndex;
@@ -930,7 +943,7 @@ static void prvInitEDF(void)
 	// 			prvWakeScheduler();
 	// 		}
 	// 	#endif /* schedUSE_TIMING_ERROR_DETECTION_DEADLINE */
-	// }
+	}
   #endif
 #endif /* schedUSE_SCHEDULER_TASK */
 
