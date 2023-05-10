@@ -59,7 +59,7 @@ static void testFunc1( void *pvParameters )
   vLocalTickDelay(24);
 #elif( TASK3 == 1)
   //vLocalDelay(40*2*7);
-  vLocalTickDelay(36);
+  vLocalTickDelay(40);
   //delay(pdTICKS_TO_MS(28));
 #endif
 
@@ -81,7 +81,7 @@ static void testFunc2( void *pvParameters )
 #elif( TASK3 == 1)
   //vLocalDelay(40 * 3 * 2);
   //delay(pdTICKS_TO_MS(12));
-  vLocalTickDelay(12);
+  vLocalTickDelay(20);
 #endif
   Serial.println("E => T2");
 
@@ -99,7 +99,7 @@ static void testFunc3( void *pvParameters )
 #elif( TASK3 == 1)
   //vLocalDelay(40 * 2);
   //delay(pdTICKS_TO_MS(4));
-  vLocalTickDelay(4);
+  vLocalTickDelay(30);
 #endif
   Serial.println("E => T3");
  
@@ -145,9 +145,9 @@ int main( void )
   Serial.println(pdTICKS_TO_MS(12));
   Serial.println(pdTICKS_TO_MS(4));
 
-  vSchedulerPeriodicTaskCreate(testFunc1, "T1", (configMINIMAL_STACK_SIZE), NULL, 0, &xHandle1, pdMS_TO_TICKS(0), 70/*pdMS_TO_TICKS(700 * 2)*/, 36 /*pdMS_TO_TICKS(40 * 5 * 2)*/, 70/*pdMS_TO_TICKS(700 * 2)*/);
-  vSchedulerPeriodicTaskCreate(testFunc2, "T2", (configMINIMAL_STACK_SIZE), NULL, 0, &xHandle2, pdMS_TO_TICKS(0), 40 /*pdMS_TO_TICKS(400 * 2)*/, 12 /*pdMS_TO_TICKS(40 * 2 * 2)*/, 40/*pdMS_TO_TICKS(400 * 2)*/);
-  vSchedulerPeriodicTaskCreate(testFunc3, "T3", (configMINIMAL_STACK_SIZE), NULL, 0, &xHandle3, pdMS_TO_TICKS(0), 20 /*pdMS_TO_TICKS(200 * 2)*/, 4 /*pdMS_TO_TICKS(40 * 2)*/, 20/*pdMS_TO_TICKS(200 * 2)*/);
+  vSchedulerPeriodicTaskCreate(testFunc1, "T1", (configMINIMAL_STACK_SIZE), NULL, 0, &xHandle1, pdMS_TO_TICKS(0), 80/*pdMS_TO_TICKS(700 * 2)*/, 40 /*pdMS_TO_TICKS(40 * 5 * 2)*/, 80/*pdMS_TO_TICKS(700 * 2)*/);
+  vSchedulerPeriodicTaskCreate(testFunc2, "T2", (configMINIMAL_STACK_SIZE), NULL, 0, &xHandle2, pdMS_TO_TICKS(0), 100 /*pdMS_TO_TICKS(400 * 2)*/, 20 /*pdMS_TO_TICKS(40 * 2 * 2)*/, 100/*pdMS_TO_TICKS(400 * 2)*/);
+  vSchedulerPeriodicTaskCreate(testFunc3, "T3", (configMINIMAL_STACK_SIZE), NULL, 0, &xHandle3, pdMS_TO_TICKS(0), 120 /*pdMS_TO_TICKS(200 * 2)*/, 30 /*pdMS_TO_TICKS(40 * 2)*/, 120/*pdMS_TO_TICKS(200 * 2)*/);
 #endif
   vSchedulerStart();
 
